@@ -1,0 +1,357 @@
+# org: saurav01
+# service: video-processing-service
+# custom:
+#   bucketName: hls-abs-1
+
+# provider:
+#   name: aws
+#   runtime: nodejs18.x
+#   region: ${env:AWS_REGION}
+#   versionFunctions: false
+#   environment:
+#     DATABASE_URL: ${env:DATABASE_URL}
+#     AWS_BUCKET_NAME: ${env:AWS_BUCKET_NAME}
+#     CUSTOM_AWS_REGION: ${env:AWS_REGION}
+#   #   SUBNET_ID: ${env:SUBNET_ID}
+#   #   SECURITY_GROUP_ID: ${env:SECURITY_GROUP_ID}
+#   # vpc:
+#   #   securityGroupIds:
+#   #     - ${env:SECURITY_GROUP_ID}
+#   #   subnetIds:
+#   #     - ${env:SUBNET_ID}
+
+#   iam:
+#     role:
+#       statements:
+#         # SQS permissions
+#         - Effect: Allow
+#           Action:
+#             - 'sqs:*'
+#           Resource: !GetAtt VideoProcessingQueue.Arn
+
+#         # S3 permissions
+#         - Effect: Allow
+#           Action:
+#             - s3:GetObject
+#             - s3:PutObject
+#             - s3:ListBucket
+#           Resource:
+#             - arn:aws:s3:::${env:AWS_BUCKET_NAME}
+#             - arn:aws:s3:::${env:AWS_BUCKET_NAME}/*
+
+#         # ECS permissions
+#         - Effect: Allow
+#           Action:
+#             - 'ecs:RunTask'
+#             - 'ecs:StopTask'
+#             - 'ecs:DescribeTasks'
+#             - 'ecs:ListTasks'
+#           Resource: '*'
+
+#         # IAM pass role permission
+#         - Effect: Allow
+#           Action:
+#             - 'iam:PassRole'
+#           Resource: '*'
+
+#         # # VPC permissions
+#         # - Effect: Allow
+#         #   Action:
+#         #     - 'ec2:CreateNetworkInterface'
+#         #     - 'ec2:DescribeNetworkInterfaces'
+#         #     - 'ec2:DeleteNetworkInterface'
+#         #     - 'ec2:DescribeSecurityGroups'
+#         #     - 'ec2:DescribeSubnets'
+#         #     - 'ec2:DescribeVpcs'
+#         #   Resource: '*'
+
+#         # CloudWatch Logs permissions
+#         - Effect: Allow
+#           Action:
+#             - 'logs:CreateLogGroup'
+#             - 'logs:CreateLogStream'
+#             - 'logs:PutLogEvents'
+#           Resource: '*'
+
+# package:
+#   individually: true
+#   patterns:
+#     - "!node_modules/**"
+#     - "!src/**"
+#     - "!./**"
+#     - "dist/**"
+#     - "package.json"
+#     - "!.env*"
+#     - "!tsconfig*"
+#     - "!README.md"
+#     - "!.git/**"
+#     - "prisma/schema.prisma"
+#     - "node_modules/.prisma/**"
+#     - "node_modules/@prisma/client/**"
+#     - "!node_modules/@prisma/engines/**"
+#     - "!node_modules/.prisma/client/libquery_engine-*"
+#     - "node_modules/.prisma/client/libquery_engine-rhel-*"
+
+# functions:
+#   videoUploadTrigger:
+#     name: video-processing-service-${opt:stage, 'dev'}-videoUploadTrigger
+#     handler: dist/lambda/videoUploadTrigger.handler
+#     timeout: 150
+#     memorySize: 2048
+#     package:
+#       patterns:
+#         - "!node_modules/**"
+#         - "dist/lambda/videoUploadTrigger.js"
+#         - "dist/lambda/lib/**"
+#         - "prisma/**"
+#     events:
+#       - s3:
+#           existing: true
+#           bucket: ${env:AWS_BUCKET_NAME}
+#           event: s3:ObjectCreated:*
+#           rules:
+#             - prefix: videos/
+#             - suffix: .mp4
+#     environment:
+#       QUEUE_URL: !Ref VideoProcessingQueue
+
+#   processVideo:
+#     handler: dist/lambda/processVideo.handler
+#     timeout: 900
+#     package:
+#       patterns:
+#         - "!node_modules/**"
+#         - "dist/lambda/processVideo.js"
+#         - "dist/services/**"
+#         - "dist/lib/**"
+#         - "prisma/**"
+#     events:
+#       - sqs:
+#           arn: !GetAtt VideoProcessingQueue.Arn
+#           batchSize: 1
+
+# resources:
+#   Resources:
+#     VideoProcessingQueue:
+#       Type: AWS::SQS::Queue
+#       Properties:
+#         QueueName: video-processing-queue
+#         VisibilityTimeout: 900 # 15 minutes
+
+#     VideoProcessingCluster:
+#       Type: AWS::ECS::Cluster
+#       Properties:
+#         ClusterName: video-processing-cluster
+
+#     VideoProcessingTaskDefinition:
+#       Type: AWS::ECS::TaskDefinition
+#       Properties:
+#         Family: video-processing
+#         RequiresCompatibilities:
+#           - FARGATE
+#         NetworkMode: awsvpc
+#         Cpu: 1024
+#         Memory: 2048
+#         ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/ecsTaskExecutionRole
+#         TaskRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/ecsTaskRole
+#         ContainerDefinitions:
+#           - Name: ffmpeg
+#             Image: jrottenberg/ffmpeg:latest
+#             Essential: true
+#             LogConfiguration:
+#               LogDriver: awslogs
+#               Options:
+#                 awslogs-group: !Ref VideoProcessingLogGroup
+#                 awslogs-region: ${aws:region}
+#                 awslogs-stream-prefix: ffmpeg
+
+#     VideoProcessingLogGroup:
+#       Type: AWS::Logs::LogGroup
+#       Properties:
+#         LogGroupName: /ecs/video-processing
+#         RetentionInDays: 7
+
+#     # SQSVPCEndpoint:
+#     #   Type: AWS::EC2::VPCEndpoint
+#     #   Properties:
+#     #     VpcId: ${env:VPC_ID}
+#     #     ServiceName: !Sub com.amazonaws.${aws:region}.sqs
+#     #     VpcEndpointType: Interface
+#     #     SubnetIds:
+#     #       - ${env:SUBNET_ID}
+#     #     SecurityGroupIds:
+#     #       - ${env:SECURITY_GROUP_ID}
+
+#     # S3VPCEndpoint:
+#     #   Type: AWS::EC2::VPCEndpoint
+#     #   Properties:
+#     #     VpcId: ${env:VPC_ID}
+#     #     ServiceName: !Sub com.amazonaws.${aws:region}.s3
+#     #     VpcEndpointType: Gateway
+#     #     RouteTableIds:
+#     #       - ${env:ROUTE_TABLE_ID}
+
+#     # SQSSecurityGroupRule:
+#     #   Type: AWS::EC2::SecurityGroupIngress
+#     #   Properties:
+#     #     GroupId: ${env:SECURITY_GROUP_ID}
+#     #     IpProtocol: tcp
+#     #     FromPort: 443
+#     #     ToPort: 443
+#     #     CidrIp: 0.0.0.0/0
+
+
+org: saurav01
+service: video-processing-service
+custom:
+  bucketName: hls-abs-1
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ${env:AWS_REGION}
+  versionFunctions: false
+  environment:
+    DATABASE_URL: ${env:DATABASE_URL}
+    AWS_BUCKET_NAME: ${env:AWS_BUCKET_NAME}
+    CUSTOM_AWS_REGION: ${env:AWS_REGION}
+
+  iam:
+    role:
+      statements:
+        # SQS permissions
+        - Effect: Allow
+          Action:
+            - 'sqs:*'
+          Resource: !GetAtt VideoProcessingQueue.Arn
+
+        # S3 permissions
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:ListBucket
+          Resource:
+            - arn:aws:s3:::${env:AWS_BUCKET_NAME}
+            - arn:aws:s3:::${env:AWS_BUCKET_NAME}/*
+
+        # ECS permissions
+        - Effect: Allow
+          Action:
+            - 'ecs:RunTask'
+            - 'ecs:StopTask'
+            - 'ecs:DescribeTasks'
+            - 'ecs:ListTasks'
+          Resource: '*'
+
+        # IAM pass role permission
+        - Effect: Allow
+          Action:
+            - 'iam:PassRole'
+          Resource: '*'
+
+        # CloudWatch Logs permissions
+        - Effect: Allow
+          Action:
+            - 'logs:CreateLogGroup'
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+          Resource: '*'
+
+package:
+  individually: true
+  patterns:
+    - "!node_modules/**"
+    - "!src/**"
+    - "!./**"
+    - "dist/**"
+    - "package.json"
+    - "!.env*"
+    - "!tsconfig*"
+    - "!README.md"
+    - "!.git/**"
+    - "prisma/schema.prisma"
+    - "node_modules/.prisma/**"
+    - "node_modules/@prisma/client/**"
+    - "!node_modules/@prisma/engines/**"
+    - "!node_modules/.prisma/client/libquery_engine-*"
+    - "node_modules/.prisma/client/libquery_engine-rhel-*"
+
+functions:
+  videoUploadTrigger:
+    name: video-processing-service-${opt:stage, 'dev'}-videoUploadTrigger
+    handler: dist/lambda/videoUploadTrigger.handler
+    timeout: 150
+    memorySize: 2048
+    package:
+      patterns:
+        - "!node_modules/**"
+        - "dist/lambda/videoUploadTrigger.js"
+        - "dist/lambda/lib/**"
+        - "prisma/**"
+    events:
+      - s3:
+          existing: true
+          bucket: ${env:AWS_BUCKET_NAME}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: videos/
+            - suffix: .mp4
+    environment:
+      QUEUE_URL: !Ref VideoProcessingQueue
+
+  processVideo:
+    handler: dist/lambda/processVideo.handler
+    timeout: 900
+    package:
+      patterns:
+        - "!node_modules/**"
+        - "dist/lambda/processVideo.js"
+        - "dist/services/**"
+        - "dist/lib/**"
+        - "prisma/**"
+    events:
+      - sqs:
+          arn: !GetAtt VideoProcessingQueue.Arn
+          batchSize: 1
+
+resources:
+  Resources:
+    VideoProcessingQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: video-processing-queue
+        VisibilityTimeout: 900 # 15 minutes
+
+    VideoProcessingCluster:
+      Type: AWS::ECS::Cluster
+      Properties:
+        ClusterName: video-processing-cluster
+
+    VideoProcessingTaskDefinition:
+      Type: AWS::ECS::TaskDefinition
+      Properties:
+        Family: video-processing
+        RequiresCompatibilities:
+          - FARGATE
+        NetworkMode: awsvpc
+        Cpu: 1024
+        Memory: 2048
+        ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/ecsTaskExecutionRole
+        TaskRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/ecsTaskRole
+        ContainerDefinitions:
+          - Name: ffmpeg
+            Image: jrottenberg/ffmpeg:latest
+            Essential: true
+            LogConfiguration:
+              LogDriver: awslogs
+              Options:
+                awslogs-group: !Ref VideoProcessingLogGroup
+                awslogs-region: ${aws:region}
+                awslogs-stream-prefix: ffmpeg
+
+    VideoProcessingLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /ecs/video-processing
+        RetentionInDays: 7

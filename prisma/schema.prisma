@@ -1,0 +1,38 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
+  engineType    = "binary"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String?
+  email         String?   @unique
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  videos        Video[]
+}
+
+model Video {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  title              String?
+  description        String?
+  thumbnailUrl       String?
+  originalVideoUrl   String?
+  manifestUrl        String?
+  status            String
+  userId            String    @db.ObjectId
+  user              User      @relation(fields: [userId], references: [id])
+  processingProgress Int      @default(0)
+  errorMessage       String?
+  availableQualities String[]
+  taskArn           String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}

@@ -1,0 +1,18 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+      "outDir": "./dist",
+      "rootDir": "./src",
+      "noEmit": false  
+    },
+    "include": [
+      "src/lambda/**/*",
+      "src/lib/**/*",
+      "src/services/**/*"
+    ],
+    "exclude": [
+      "node_modules",
+      "src/app/**/*",
+      "src/components/**/*"
+    ]
+  }
