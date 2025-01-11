@@ -36,7 +36,6 @@ export const handler = async (event: S3Event) => {
             throw new Error('Could not extract video ID from key');
         }
 
-        // Generate a pre-signed URL for the S3 object
         const command = new GetObjectCommand({ Bucket: bucketName, Key: key });
         const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
 
@@ -44,18 +43,18 @@ export const handler = async (event: S3Event) => {
             videoId,
             bucket: bucketName,
             key,
-            outputPath: `processed/${videoId}`,
+            outputPath: `processed-01/${videoId}`,
             signedUrl
         };
 
         console.log('Sending SQS message:', JSON.stringify(message, null, 2));
-        console.log("QUEUE_URL", process.env.QUEUE_URL || 'https://sqs.ap-south-1.amazonaws.com/767397702079/video-processing-queue');
+        console.log("QUEUE_URL", process.env.QUEUE_URL || '');
 
         try {
             const result = await sqs.sendMessage({
-                QueueUrl: process.env.QUEUE_URL || 'https://sqs.ap-south-1.amazonaws.com/767397702079/video-processing-queue',
+                QueueUrl: process.env.QUEUE_URL || '',
                 MessageBody: JSON.stringify(message)
-            });
+        });
 
             console.log('Message sent successfully:', result.MessageId);
 
