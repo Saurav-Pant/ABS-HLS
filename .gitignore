@@ -18,6 +18,7 @@
 /out/
 /dist/*
 /.serverless
+.serverless/
 
 # production
 /build

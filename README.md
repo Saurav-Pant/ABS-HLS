@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HLS-ABS (HTTP Live Streaming - Adaptive Bitrate Streaming)
 
-## Getting Started
+## Project Overview
+HLS-ABS is a video processing platform that enables adaptive bitrate streaming using AWS services. The platform automatically transcodes uploaded videos into multiple quality levels and creates HLS streams for optimal playback across different devices and network conditions.
 
-First, run the development server:
+## Architecture
+![HLS-ABS Architecture](./public/architecture.png)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
+- Video upload with thumbnail support
+- Automatic video transcoding to multiple qualities (1080p, 720p, 480p)
+- HLS (HTTP Live Streaming) manifest generation
+- Adaptive bitrate streaming
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tech Stack
+### Frontend
+- Next.js 15.1
+- React 19
+- TypeScript
+- Tailwind CSS
+- Video.js
+- NextAuth.js for authentication
+- Shadcn UI components
 
-## Learn More
+### Backend
+- Node.js 18
+- FFmpeg for video processing
+- Prisma ORM
+- MongoDB
+- Docker
 
-To learn more about Next.js, take a look at the following resources:
+### AWS Services
+- S3 (Video storage)
+- ECS (Fargate for video processing)
+- SQS (Message queue)
+- Lambda (Serverless functions)
+- CloudWatch (Logging)
+- IAM (Access management)
+- VPC (Networking)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Prerequisites
+- Node.js 18 or higher
+- AWS Account with appropriate permissions
+- MongoDB database
+- Docker installed for local development
+- FFmpeg installed locally for development
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Environment Variables
+- Check the .env.example file for the required environment variables.

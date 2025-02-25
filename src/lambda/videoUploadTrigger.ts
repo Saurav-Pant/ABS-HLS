@@ -43,16 +43,16 @@ export const handler = async (event: S3Event) => {
             videoId,
             bucket: bucketName,
             key,
-            outputPath: `processed-01/${videoId}`,
+            outputPath: `processed-01/${videoId}/`,
             signedUrl
         };
 
         console.log('Sending SQS message:', JSON.stringify(message, null, 2));
-        console.log("QUEUE_URL", process.env.QUEUE_URL || '');
+        console.log("QUEUE_URL", process.env.QUEUE_URL);
 
         try {
             const result = await sqs.sendMessage({
-                QueueUrl: process.env.QUEUE_URL || '',
+                QueueUrl: process.env.QUEUE_URL,
                 MessageBody: JSON.stringify(message)
         });
 
